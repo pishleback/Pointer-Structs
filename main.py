@@ -5,50 +5,49 @@ import json
 
 # str, int, bool
 # list(type)
-# name_of_defined_type
-
-
-
 
 class TypePtr():
     def __init__(self, struct):
         assert type(struct) == dict
-        self.ptr_type = struct["ptr_type"]
-        if self.ptr_type == "defined":
+        self.kind = struct["kind"]
+        if self.kind == "ptr":
+            assert "unique" in struct
+            self.unique = struct["unique"]
+            assert type(self.unique) == bool
             for key in struct:
-                assert key in {"ptr_type", "type"}
-            self.defined_type = struct["type"]
-            assert type(self.defined_type) == str
-            #this is checked for validity in the context class via validate_ptr_types
-        elif self.ptr_type == "basic":
+                assert key in {"kind", "unique", "type"}
+            self.ptr_type = struct["type"]
+            assert type(self.ptr_type) == str
+            #this is checked for validity in the context class via validate_kinds
+        elif self.kind == "basic":
             for key in struct:
-                assert key in {"ptr_type", "type"}
+                assert key in {"kind", "type"}
             self.builtin_type = struct["type"]
             assert self.builtin_type in {"bool", "int", "str", "float"}
-        elif self.ptr_type == "list":
+        elif self.kind == "list":
             for key in struct:
-                assert key in {"ptr_type", "type"}
+                assert key in {"kind", "type"}
             self.listed_type = TypePtr(struct["type"])
         else:
             assert False
 
     def __str__(self):
-        if self.ptr_type == "defined":
-            return f"DefinedType({self.defined_type})"
-        elif self.ptr_type == "basic":
+        if self.kind == "ptr":
+            return f"PtrType({self.ptr_type})"
+        elif self.kind == "basic":
             return f"BasicType({self.builtin_type})"
-        elif self.ptr_type == "list":
+        elif self.kind == "list":
             return f"List({self.listed_type})"
         else:
             assert False
 
-    def validate_ptr_types(self, defined_type_names):
-        if self.ptr_type == "defined":
-            assert self.defined_type in defined_type_names
-        elif self.ptr_type == "basic":
+    def validate_kinds(self, ptr_type_names):
+        if self.kind == "ptr":
+            assert self.ptr_type in ptr_type_names
+        elif self.kind == "basic":
             pass
-        elif self.ptr_type == "list":
-            self.listed_type.validate_ptr_types(defined_type_names)
+        elif self.kind == "list":
+            self.listed_type.validate_kinds(ptr_type_names)
         else:
             assert False
         
@@ -92,12 +91,13 @@ class Type():
     def __str__(self):
         return str(self.name) + "[" + ", ".join(str(st) for st in self.super_names) + "]" + "(" + ", ".join(n + ':' + str(t) for n, t in self.content.items()) + ")"
 
-    def validate_ptr_types(self, defined_type_names):
+    def validate_kinds(self, ptr_type_names):
         for t in self.content.values():
-            t.validate_ptr_types(defined_type_names)
+            t.validate_kinds(ptr_type_names)
+            
 
 
-class Context():
+class TypeContext():
     def __init__(self, structure):
         assert type(structure) == list
 
@@ -109,22 +109,43 @@ class Context():
 
         #check pointer types are valid
         for t in self.types.values():
-            t.validate_ptr_types(set(self.types.keys()))
+            t.validate_kinds(set(self.types.keys()))
 
         for n, t in self.types.items():
             print(t)
 
+    def __str__(self):
+        return "TypeContext(" + ", ".join(self.types.keys()) + ")"
 
-    
+
+
+
+class ObjectContext():
+    def __init__(self, type_ctx, objects):
+        assert type(objects) == list
+        for obj in objects:
+            print(obj)
+            assert type(obj) == dict
+            for key in obj.keys():
+                print(key)
+
+
+
+
+
 
 
 
 
 with open("structure.json", "r") as f:
     structure = json.loads(f.read())
-    ctx = Context(structure)
+    type_ctx = TypeContext(structure)
 
-
+with open("objects.json", "r") as f:
+    objects = json.loads(f.read())
+    obj_ctx = ObjectContext(type_ctx, objects)
+    
+    
 
 
 

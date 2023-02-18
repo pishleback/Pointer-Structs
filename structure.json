@@ -1,11 +1,4 @@
-
-
-
-
-
-
 [
-
 {
 	"type" : "info"
 },
@@ -14,7 +7,7 @@
 	"type" : "string",
 	"super" : ["info"],
 	"content" : {
-        "string" : {"ptr_type" : "basic", "type" : "str"}
+        "string" : {"kind" : "basic", "type" : "str"}
     }
 },
 
@@ -22,8 +15,8 @@
 	"type" : "subinfo",
 	"super" : ["info"],
 	"content" : {
-        "title" : {"ptr_type" : "basic", "type" : "str"},
-		"infos" : {"ptr_type" : "list", "type" : {"ptr_type" : "defined", "type" : "info"}}
+        "title" : {"kind" : "basic", "type" : "str"},
+		"infos" : {"kind" : "list", "type" : {"kind" : "ptr", "unique" : true, "type" : "info"}}
     }
 },
 
@@ -31,10 +24,10 @@
 	"type" : "date",
 	"super" : ["info"],
 	"content" : {
-        "day" : {"ptr_type" : "basic", "type" : "str"},
-		"month" : {"ptr_type" : "basic", "type" : "str"},
-		"year" : {"ptr_type" : "basic", "type" : "str"},
-		"tags" : {"ptr_type" : "list", "type" : {"ptr_type" : "basic", "type" : "str"}}
+        "day" : {"kind" : "basic", "type" : "str"},
+		"month" : {"kind" : "basic", "type" : "str"},
+		"year" : {"kind" : "basic", "type" : "str"},
+		"tags" : {"kind" : "list", "type" : {"kind" : "basic", "type" : "str"}}
     }
 },
 
@@ -44,8 +37,8 @@
 {
     "type" : "entity",
 	"content" : {
-		"target" : {"ptr_type" : "list", "type" : {"ptr_type" : "defined", "type" : "info"}},
-        "target" : {"ptr_type" : "list", "type" : {"ptr_type" : "defined", "type" : "subimage"}}
+		"infos" : {"kind" : "list", "type" : {"kind" : "ptr", "unique" : true, "type" : "info"}},
+        "images" : {"kind" : "list", "type" : {"kind" : "ptr", "unique" : true, "type" : "subimage"}}
     }
 },
 
@@ -57,15 +50,15 @@
 {
     "type" : "parent_ptr",
 	"content" : {
-        "target" : {"ptr_type" : "defined", "type" : "person"}
+        "target" : {"kind" : "ptr", "unique" : false, "type" : "person"}
     }
 },
 
 {
     "type" : "child_ptr", 
     "content" : {
-        "target" : {"ptr_type" : "defined", "type" : "person"},
-		"adopted" : {"ptr_type" : "basic", "type" : "bool"}
+        "target" : {"kind" : "ptr", "unique" : false, "type" : "person"},
+		"adopted" : {"kind" : "basic", "type" : "bool"}
     }
 },
 
@@ -73,8 +66,8 @@
     "type" : "partnership", 
     "super" : ["entity"],
     "content" : {
-        "parents" : {"ptr_type" : "list", "type" : {"ptr_type" : "defined", "type" : "parent_ptr"}},
-        "children" : {"ptr_type" : "list", "type" : {"ptr_type" : "defined", "type" : "child_ptr"}}
+        "parents" : {"kind" : "list", "type" : {"kind" : "ptr", "unique" : true, "type" : "parent_ptr"}},
+        "children" : {"kind" : "list", "type" : {"kind" : "ptr", "unique" : true, "type" : "child_ptr"}}
     }
 },
 
@@ -82,18 +75,18 @@
     "type" : "image",
     "super" : ["entity"],
 	"content" : {
-		"path" : {"ptr_type" : "basic", "type" : "str"}
+		"path" : {"kind" : "basic", "type" : "str"}
     }
 },
 
 {
     "type" : "subimage",
 	"content" : {
-		"image" : {"ptr_type" : "defined", "type" : "image"},
-        "x" : {"ptr_type" : "basic", "type" : "float"},
-		"y" : {"ptr_type" : "basic", "type" : "float"},
-		"w" : {"ptr_type" : "basic", "type" : "float"},
-		"h" : {"ptr_type" : "basic", "type" : "float"}
+		"image" : {"kind" : "ptr", "unique" : false, "type" : "image"},
+        "x" : {"kind" : "basic", "type" : "float"},
+		"y" : {"kind" : "basic", "type" : "float"},
+		"w" : {"kind" : "basic", "type" : "float"},
+		"h" : {"kind" : "basic", "type" : "float"}
     }
 },
 
@@ -101,7 +94,7 @@
 {
 	"type" : "tree",
 	"content" : {
-		"entities" : {"ptr_type" : "list", "type" : {"ptr_type" : "defined", "type" : "entity"}}
+		"entities" : {"kind" : "list", "type" : {"kind" : "ptr", "unique" : false, "type" : "entity"}}
     }
 }
 
