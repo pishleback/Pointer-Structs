@@ -1,0 +1,108 @@
+
+
+
+
+
+
+[
+
+{
+	"type" : "info"
+},
+
+{
+	"type" : "string",
+	"super" : ["info"],
+	"content" : {
+        "string" : {"ptr_type" : "basic", "type" : "str"}
+    }
+},
+
+{
+	"type" : "subinfo",
+	"super" : ["info"],
+	"content" : {
+        "title" : {"ptr_type" : "basic", "type" : "str"},
+		"infos" : {"ptr_type" : "list", "type" : {"ptr_type" : "defined", "type" : "info"}}
+    }
+},
+
+{
+	"type" : "date",
+	"super" : ["info"],
+	"content" : {
+        "day" : {"ptr_type" : "basic", "type" : "str"},
+		"month" : {"ptr_type" : "basic", "type" : "str"},
+		"year" : {"ptr_type" : "basic", "type" : "str"},
+		"tags" : {"ptr_type" : "list", "type" : {"ptr_type" : "basic", "type" : "str"}}
+    }
+},
+
+
+
+
+{
+    "type" : "entity",
+	"content" : {
+		"target" : {"ptr_type" : "list", "type" : {"ptr_type" : "defined", "type" : "info"}},
+        "target" : {"ptr_type" : "list", "type" : {"ptr_type" : "defined", "type" : "subimage"}}
+    }
+},
+
+{
+    "type" : "person",
+    "super" : ["entity"]
+},
+
+{
+    "type" : "parent_ptr",
+	"content" : {
+        "target" : {"ptr_type" : "defined", "type" : "person"}
+    }
+},
+
+{
+    "type" : "child_ptr", 
+    "content" : {
+        "target" : {"ptr_type" : "defined", "type" : "person"},
+		"adopted" : {"ptr_type" : "basic", "type" : "bool"}
+    }
+},
+
+{
+    "type" : "partnership", 
+    "super" : ["entity"],
+    "content" : {
+        "parents" : {"ptr_type" : "list", "type" : {"ptr_type" : "defined", "type" : "parent_ptr"}},
+        "children" : {"ptr_type" : "list", "type" : {"ptr_type" : "defined", "type" : "child_ptr"}}
+    }
+},
+
+{
+    "type" : "image",
+    "super" : ["entity"],
+	"content" : {
+		"path" : {"ptr_type" : "basic", "type" : "str"}
+    }
+},
+
+{
+    "type" : "subimage",
+	"content" : {
+		"image" : {"ptr_type" : "defined", "type" : "image"},
+        "x" : {"ptr_type" : "basic", "type" : "float"},
+		"y" : {"ptr_type" : "basic", "type" : "float"},
+		"w" : {"ptr_type" : "basic", "type" : "float"},
+		"h" : {"ptr_type" : "basic", "type" : "float"}
+    }
+},
+
+
+{
+	"type" : "tree",
+	"content" : {
+		"entities" : {"ptr_type" : "list", "type" : {"ptr_type" : "defined", "type" : "entity"}}
+    }
+}
+
+]
