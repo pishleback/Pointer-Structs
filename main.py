@@ -127,7 +127,13 @@ class ObjectContext():
             print(obj)
             assert type(obj) == dict
             for key in obj.keys():
-                print(key)
+                assert key in {"type", "id", "content"}
+            #validate type
+            assert obj["type"] in type_ctx.types
+            #validate id
+            assert type(obj["id"]) == int
+            #validate content
+            #validate obj["content"] against type_ctx.types[obj["type"]]
 
 
 
