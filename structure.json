@@ -96,6 +96,20 @@
 	"content" : {
 		"entities" : {"kind" : "list", "type" : {"kind" : "ptr", "unique" : false, "type" : "entity"}}
     }
+},
+
+{
+	"type" : "foo",
+	"content" : {
+		"bar" : {"kind" : "list", "type" : {"kind" : "ptr", "unique" : false, "type" : "bar"}}
+    }
+},
+
+{
+	"type" : "bar",
+	"content" : {
+		"foo" : {"kind" : "list", "type" : {"kind" : "ptr", "unique" : false, "type" : "foo"}}
+    }
 }
 
 ]

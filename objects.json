@@ -1,3 +1,5 @@
 [
-{"type" : "tree", "id" : 0, "content" : {"entities" : [2, 3, 4]}}
+{"type" : "tree", "ref" : "root", "id" : 0, "content" : {"entities" : [1, 2]}},
+{"type" : "entity", "ref" : "shared", "id" : 1, "content" : {"infos" : [], "images" : []}},
+{"type" : "person", "ref" : "shared", "id" : 2, "content" : {"infos" : [], "images" : []}}
 ]
