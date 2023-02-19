@@ -101,14 +101,14 @@
 {
 	"type" : "foo",
 	"content" : {
-		"bar" : {"kind" : "list", "type" : {"kind" : "ptr", "unique" : false, "type" : "bar"}}
+		"bars" : {"kind" : "list", "type" : {"kind" : "ptr", "unique" : false, "type" : "bar"}}
     }
 },
 
 {
 	"type" : "bar",
 	"content" : {
-		"foo" : {"kind" : "list", "type" : {"kind" : "ptr", "unique" : false, "type" : "foo"}}
+		"foos" : {"kind" : "list", "type" : {"kind" : "ptr", "unique" : false, "type" : "foo"}}
     }
 }
 
