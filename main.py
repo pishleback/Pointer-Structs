@@ -3,8 +3,8 @@ import json
 
 
 
-# str, int, bool
-# list(type)
+
+
 
 class TypePtr():
     def __init__(self, struct):
@@ -48,6 +48,19 @@ class TypePtr():
             pass
         elif self.kind == "list":
             self.listed_type.validate_kinds(ptr_type_names)
+        else:
+            assert False
+
+    def validate_object(self, content, obj_lookup):
+        print(self, content, obj_lookup)
+        if self.kind == "ptr":
+            assert False
+        elif self.kind == "basic":
+            assert False
+        elif self.kind == "list":
+            assert type(content) == list
+            for item in content:
+                self.listed_type.validate_object(item, obj_lookup)
         else:
             assert False
         
@@ -94,6 +107,11 @@ class Type():
     def validate_kinds(self, ptr_type_names):
         for t in self.content.values():
             t.validate_kinds(ptr_type_names)
+
+    def validate_object(self, content, obj_lookup):
+        assert (keys := content.keys()) == self.content.keys()
+        for key in keys:
+            self.content[key].validate_object(content[key], obj_lookup)
             
 
 
@@ -111,8 +129,8 @@ class TypeContext():
         for t in self.types.values():
             t.validate_kinds(set(self.types.keys()))
 
-        for n, t in self.types.items():
-            print(t)
+##        for n, t in self.types.items():
+##            print(t)
 
     def __str__(self):
         return "TypeContext(" + ", ".join(self.types.keys()) + ")"
@@ -123,17 +141,24 @@ class TypeContext():
 class ObjectContext():
     def __init__(self, type_ctx, objects):
         assert type(objects) == list
+        self.objects = {} #ident -> obj
         for obj in objects:
-            print(obj)
             assert type(obj) == dict
             for key in obj.keys():
                 assert key in {"type", "id", "content"}
             #validate type
             assert obj["type"] in type_ctx.types
             #validate id
-            assert type(obj["id"]) == int
+            assert type(ident := obj["id"]) == int
+            assert not ident in self.objects
+            self.objects[ident] = obj
+
+        for ident, obj in self.objects.items():
             #validate content
-            #validate obj["content"] against type_ctx.types[obj["type"]]
+            type_ctx.types[obj["type"]].validate_object(obj["content"], self.objects)
+            
+        for ident, obj in self.objects.items():
+            print(ident, obj)
 
 
 
