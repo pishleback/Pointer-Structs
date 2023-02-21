@@ -1,9 +1,9 @@
 [[
 {"opp" : "add", "object" : {"type" : "bar", "ref" : "shared", "id" : 1, "content" : {"foos" : []}}},
 {"opp" : "add", "object" : {"type" : "bar", "ref" : "shared", "id" : 2, "content" : {"foos" : []}}},
-{"opp" : "modify", "id" : 0, "field" : "bars", "action" : {"opp" : "replace", "value" : [1]}},
+{"opp" : "modify", "id" : 0, "field" : "bars", "action" : {"opp" : "replace", "value" : [1, 3, 4]}},
 {"opp" : "modify", "id" : 0, "field" : "bars", "action" : {"opp" : "append", "value" : 1}},
 {"opp" : "modify", "id" : 0, "field" : "bars", "action" : {"opp" : "append", "value" : 1}},
-{"opp" : "modify", "id" : 0, "field" : "bars", "action" : {"opp" : "remove", "idx" : 2}},
-{"opp" : "modify", "id" : 0, "field" : "bars", "action" : {"opp" : "modify", "idx" : 0, "action" : {"opp" : "replace", "value" : 2}}}
+{"opp" : "modify", "id" : 0, "field" : "bars", "action" : {"opp" : "remove", "idx" : 4}},
+{"opp" : "modify", "id" : 0, "field" : "bars", "action" : {"opp" : "modify", "idx" : 3, "action" : {"opp" : "replace", "value" : 2}}}
 ]]

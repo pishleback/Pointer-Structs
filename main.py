@@ -61,14 +61,17 @@ class TypeContext():
             def validate_object(self, obj_ctx, content):
                 parse_assert(type(content) == int, "a pointer to an object should be an int containing the id of the object")
                 parse_assert(content in obj_ctx.objects, f"pointer to object with id \"{content}\" not found")
-                parse_assert(self.ptr_type in obj_ctx.objects[content].get_type().super_names, f"pointer to object of type \"{self.ptr_type}\" contains id of object of non super type \"{obj_ctx.objects[content].typename}\"")
+                target_object = obj_ctx.objects[content]
+                parse_assert(self.ptr_type in target_object.get_type().super_names, f"pointer to object of type \"{self.ptr_type}\" contains id of object of non super type \"{obj_ctx.objects[content].typename}\"")
                 if self.unique:
-                    parse_assert(obj_ctx.objects[content].ref == REF_UNIQUE, "unique pointer must point to a unique with ref=unique")
+                    parse_assert(target_object.reftypestr() == REF_UNIQUE, "unique pointer must point to a unique with ref=unique")
+                    assert content == target_object.owner
                 else:
-                    parse_assert(obj_ctx.objects[content].ref == REF_SHARED, "shared pointer must point to an object with ref=shared")
+                    parse_assert(target_object.reftypestr() == REF_SHARED, "shared pointer must point to an object with ref=shared")
+                    print(content, target_object.owners)
+                    assert content in target_object.owners
 
             def get_refs(self, obj_ctx, content):
-                self.validate_object(obj_ctx, content)
                 assert type(content) == int
                 yield content
 
@@ -87,7 +90,6 @@ class TypeContext():
                     parse_assert(key in {"kind", "type"}, f"invalid field \"{key}\" provided to content type")
                 self.builtin_type = struct["type"]
                 assert self.builtin_type in BUILTIN_TYPES
-
 
             def __str__(self):
                 return f"BasicType({self.builtin_type})"
@@ -239,9 +241,14 @@ class TypeContext():
 class ObjectContext():
     def __init__(self, type_ctx, objects):
         assert type(objects) == list
+        
 
         obj_ctx = self
         class Object():
+            @classmethod
+            def reftypestr(cls):
+                assert False
+            
             def __init__(self, data):
                 parse_assert(type(data) == dict, "objects shold be dicts")
                 for key in data.keys():
@@ -254,17 +261,16 @@ class ObjectContext():
                 parse_assert(type(data["id"]) == int, "object id should be an int")
                 self.ident = data["id"]
 
-                #validate ref
-                parse_assert(data["ref"] in {REF_ROOT, REF_UNIQUE, REF_SHARED}, "object ref should be one of \"{REF_ROOT}\", \"{REF_UNIQUE}\", \"{REF_SHARED}\"")
-                self.ref = data["ref"]
+##                self.ref = data["ref"]
+##                assert type(self) == Object[self.ref]
 
                 #validate content is done after all objects are created
                 self.content = data["content"]
 
             def to_json(self):
                 return {"type" : self.typename,
-                        "ref" : self.ref,
                         "id" : self.ident,
+                        "ref" : type(self).reftypestr(),
                         "content" : self.content}
 
             def get_type(self):
@@ -280,26 +286,109 @@ class ObjectContext():
                 t = self.get_type()
                 for key in self.content_keys:
                     yield from t.content[key].get_refs(obj_ctx, self.content[key])
+
+            def add_reverse_ref(self, ident):
+                raise NotImplementedError()
+
+            def validate(self):
+                #move validate_object code into here
+                self.get_type().validate_object(obj_ctx, self.content)
+                    
                     
         self.Object = Object
 
+        class RootObject(Object):
+            @classmethod
+            def reftypestr(cls):
+                return "root"
+                
+            def __init__(self, data):
+                super().__init__(data)
+
+            def add_reverse_ref(self, ident):
+                parse_assert(False, "The root object cannot be referenced")
+
+            def validate(self):
+                super().validate()
+
+
+        class UniqueObject(Object):
+            @classmethod
+            def reftypestr(cls):
+                return "unique"
+                
+            def __init__(self, data):
+                super().__init__(data)
+                self.owner = None
+
+            def add_reverse_ref(self, ident):
+                parse_assert(self.owner is None, f"unique objects should have exactly one reference, but unique object {ident} has {count} references")
+                self.owner = ident
+                
+            def validate(self):
+                super().validate()
+                assert not self.owner is None
+                assert self.ident in obj_ctx.objects[self.owner].get_refs()
+
+
+        class SharedObject(Object):
+            @classmethod
+            def reftypestr(cls):
+                return "shared"
+                
+            def __init__(self, data):
+                super().__init__(data)
+                self.owners = set([])
+
+            def add_reverse_ref(self, ident):
+                self.owners.add(ident)
+
+            def validate(self):
+                super().validate()
+                for owner in self.owners:
+                    assert self.ident in obj_ctx.objects[owner].get_refs()
+            
+
+                    
+        def make_object(data):
+            parse_assert("ref" in data, "object json should contain a ref field")
+            ref = data["ref"]
+            for obj_t in [RootObject, UniqueObject, SharedObject]:
+                if ref == obj_t.reftypestr():
+                    return obj_t(data)
+            parse_assert(False, "invalide ref value. Should be one of: \"root\", \"unique\", \"shared\".")
+                    
+        self.make_object = make_object
+
         self.root = None
         self.objects = {} #ident -> objects
-        for data in objects:
-            self.add_object(data)
+        self.add_objects(objects)
         parse_assert(not self.root is None, "no root object present")
         assert type(self.root) == int
         assert self.root in self.objects
 
         self.validate()
 
-    def add_object(self, data):
-        obj = self.Object(data)
-        parse_assert(not obj.ident in self.objects, f"multiple objects with id {obj.ident} found")
-        self.objects[obj.ident] = obj
-        if obj.ref == "root":
-            parse_assert(self.root is None, "more than one root object present")
-            self.root = obj.ident
+    def add_objects(self, objects):
+        #must be done with lists of objects so that circular references can occur within the provided objects
+        
+        #add objects
+        new_idents = []
+        for data in objects:
+            obj = self.make_object(data)
+            parse_assert(not obj.ident in self.objects, f"multiple objects with id {obj.ident} found")
+            ident = obj.ident
+            self.objects[ident] = obj
+            if type(obj).reftypestr() == "root":
+                parse_assert(self.root is None, "more than one root object present")
+                self.root = ident
+            new_idents.append(ident)
+
+        #add reverse pointers
+        for ident in new_idents:
+            obj = self.objects[ident]
+            for target_ident in obj.get_refs():
+                self.objects[target_ident].add_reverse_ref(ident)
 
     def __str__(self):
         return json.dumps(self.to_json(), indent = 2)
@@ -311,29 +400,30 @@ class ObjectContext():
         #validate contents
         for ident, obj in self.objects.items():
             assert type(ident) == int
-            assert type(obj) == self.Object
+            assert isinstance(obj, self.Object)
             assert obj.ident == ident
-            obj.get_type().validate_object(self, obj.content)
+            obj.validate()
 
-        #validate reference counts
-        # - should be a unique root with no references
-        # - exactly one refernece from a unique ptr to unique objects
-        # - arbitrarily many referneces from shared ptrs to shared objects
-        ref_count = {ident : 0 for ident in self.objects}
-        for ident, obj in self.objects.items():
-            for ref in obj.get_refs():
-                ref_count[ref] += 1
-
-        for ident, count in ref_count.items():
-            ref = self.objects[ident].ref
-            if ref == REF_ROOT:
-                assert count == 0 #should be impossible to be non-zero as unique pointers only point at unique objects and same for shared points and shared objects
-            elif ref == REF_UNIQUE:
-                parse_assert(count == 1, f"unique objects should have exactly one reference, but unique object {ident} has {count} references")
-            elif ref == REF_SHARED:
-                pass
-            else:
-                assert False
+#################### already done in reverse references ####################
+##        #validate reference counts
+##        # - should be a unique root with no references
+##        # - exactly one refernece from a unique ptr to unique objects
+##        # - arbitrarily many referneces from shared ptrs to shared objects
+##        ref_count = {ident : 0 for ident in self.objects}
+##        for ident, obj in self.objects.items():
+##            for ref in obj.get_refs():
+##                ref_count[ref] += 1
+##
+##        for ident, count in ref_count.items():
+##            ref = self.objects[ident].ref
+##            if ref == REF_ROOT:
+##                assert count == 0 #should be impossible to be non-zero as unique pointers only point at unique objects and same for shared points and shared objects
+##            elif ref == REF_UNIQUE:
+##                parse_assert(count == 1, f"unique objects should have exactly one reference, but unique object {ident} has {count} references")
+##            elif ref == REF_SHARED:
+##                pass
+##            else:
+##                assert False
 
         #validate reference reachability (everything should be reachable from the root element)
         reachable_idents = set([self.root])
@@ -365,7 +455,7 @@ class ObjectContext():
                 if opp == "add":
                     for key in atomic_change:
                         parse_assert(key in {"opp", "object"}, f"invalid {opp} opp field \"{key}\"")
-                    self.add_object(atomic_change["object"])
+                    self.add_objects([atomic_change["object"]])
                 elif opp == "remove":
                     for key in atomic_change:
                         parse_assert(key in {"opp", "id"}, f"invalid {opp} opp field \"{key}\"")
@@ -382,6 +472,7 @@ class ObjectContext():
                     obj = self.objects[ident]
                     key = atomic_change["field"]
                     parse_assert(key in obj.get_type().content.keys(), "object of type \"{obj.typename}\" has no field \"{key}\"")
+                    #TODO: move change content into object class
                     obj.content[key] = obj.get_type().content[key].change_content(self, obj.content[key], atomic_change["action"])
                 else:
                     parse_assert(False, f"invalid \"opp\" field")
@@ -403,11 +494,11 @@ with open("objects.json", "r") as f:
 
     print(obj_ctx)
 
-with open("changes.json", "r") as f:
-    changes = json.loads(f.read())
-    obj_ctx.apply_changes(changes)
-
-    print(obj_ctx)
+##with open("changes.json", "r") as f:
+##    changes = json.loads(f.read())
+##    obj_ctx.apply_changes(changes)
+##
+##    print(obj_ctx)
 
     
     
