@@ -27,11 +27,11 @@ class TypeContext():
                 raise NotImplementedError()
             def validate_kinds(self, ptr_type_names):
                 raise NotImplementedError()
-            def validate_object(self, obj_ctx, content):
+            def validate_object(self, obj_ctx, ident, content):
                 raise NotImplementedError()
             def get_refs(self, obj_ctx, content):
                 raise NotImplementedError()
-            def change_content(self, obj_ctx, content, action):
+            def change_content(self, obj_ctx, ident, content, action):
                 parse_assert("opp" in action, "change objects need an \"opp\" field")
                 opp = action["opp"]
                 if opp == "replace":
@@ -58,7 +58,7 @@ class TypeContext():
             def validate_kinds(self, ptr_type_names):
                 assert self.ptr_type in ptr_type_names
 
-            def validate_object(self, obj_ctx, content):
+            def validate_object(self, obj_ctx, ident, content):
                 parse_assert(type(content) == int, "a pointer to an object should be an int containing the id of the object")
                 parse_assert(content in obj_ctx.objects, f"pointer to object with id \"{content}\" not found")
                 target_object = obj_ctx.objects[content]
@@ -68,18 +68,17 @@ class TypeContext():
                     assert content == target_object.owner
                 else:
                     parse_assert(target_object.reftypestr() == REF_SHARED, "shared pointer must point to an object with ref=shared")
-                    print(content, target_object.owners)
-                    assert content in target_object.owners
+                    assert ident in target_object.owners
 
             def get_refs(self, obj_ctx, content):
                 assert type(content) == int
                 yield content
 
-            def change_content(self, obj_ctx, content, action):
-                changed_content = super().change_content(obj_ctx, content, action)
+            def change_content(self, obj_ctx, ident, content, action):
+                changed_content = super().change_content(obj_ctx, ident, content, action)
                 if changed_content is None:
                     parse_assert(False, f"unknown basic type action {action['opp']}")
-                self.validate_object(obj_ctx, changed_content)
+                #self.validate_object(obj_ctx, ident, changed_content)
                 return changed_content
 
         class BasicTypePtr(TypePtr):
@@ -97,17 +96,17 @@ class TypeContext():
             def validate_kinds(self, ptr_type_names):
                 pass
 
-            def validate_object(self, obj_ctx, content):
+            def validate_object(self, obj_ctx, ident, content):
                 parse_assert(type(content) == (BUILTIN_TYPES[self.builtin_type]), "basic type content has the wrong type")
                 
             def get_refs(self, obj_ctx, content):
                 return; yield
 
-            def change_content(self, obj_ctx, content, action):
-                changed_content = super().change_content(obj_ctx, content, action)
+            def change_content(self, obj_ctx, ident, content, action):
+                changed_content = super().change_content(obj_ctx, ident, content, action)
                 if changed_content is None:
                     parse_assert(False, f"unknown basic type action {action['opp']}")
-                self.validate_object(obj_ctx, changed_content)
+                #self.validate_object(obj_ctx, ident, changed_content)
                 return changed_content
 
         class ListTypePtr(TypePtr):
@@ -124,17 +123,17 @@ class TypeContext():
             def validate_kinds(self, ptr_type_names):
                 self.listed_type.validate_kinds(ptr_type_names)
 
-            def validate_object(self, obj_ctx, content):
+            def validate_object(self, obj_ctx, ident, content):
                 parse_assert(type(content) == list, "list content should be provided as a list")
                 for item in content:
-                    self.listed_type.validate_object(obj_ctx, item)
+                    self.listed_type.validate_object(obj_ctx, ident, item)
 
             def get_refs(self, obj_ctx, content):
                 for item in content:
                     yield from self.listed_type.get_refs(obj_ctx, item)
 
-            def change_content(self, obj_ctx, content, action):
-                changed_content = super().change_content(obj_ctx, content, action)
+            def change_content(self, obj_ctx, ident, content, action):
+                changed_content = super().change_content(obj_ctx, ident, content, action)
                 if changed_content is None:
                     opp = action["opp"]
                     changed_content = list(content)
@@ -147,7 +146,7 @@ class TypeContext():
                             parse_assert(key in {"opp", "idx", "action"}, f"unknown field \"{key}\" in list modify action")
                         parse_assert(type(action["idx"]) == int, "list idx should be an int")
                         parse_assert(0 <= action["idx"] < len(changed_content), "list idx out of range")
-                        changed_content[action["idx"]] = self.listed_type.change_content(obj_ctx, changed_content[action["idx"]], action["action"])
+                        changed_content[action["idx"]] = self.listed_type.change_content(obj_ctx, ident, changed_content[action["idx"]], action["action"])
                     elif opp == "remove":
                         for key in action:
                             parse_assert(key in {"opp", "idx"}, f"unknown field \"{key}\" in list modify action")
@@ -156,7 +155,7 @@ class TypeContext():
                         del changed_content[action["idx"]]
                     else:
                         parse_assert(False, f"unknown list opperation \"{opp}\"")
-                self.validate_object(obj_ctx, changed_content)
+                #self.validate_object(obj_ctx, ident, changed_content)
                 return changed_content
 
         def make_type_ptr(struct):
@@ -211,10 +210,10 @@ class TypeContext():
                 for t in self.content.values():
                     t.validate_kinds(ptr_type_names)
 
-            def validate_object(self, obj_ctx, content):
+            def validate_object(self, obj_ctx, ident, content):
                 parse_assert((keys := content.keys()) == self.content.keys(), f"objects content keys {set(content.keys())} dont match those expected of its type {set(self.content.keys())}")
                 for key in keys:
-                    self.content[key].validate_object(obj_ctx, content[key])
+                    self.content[key].validate_object(obj_ctx, ident, content[key])
                 
 
             
@@ -267,6 +266,11 @@ class ObjectContext():
                 #validate content is done after all objects are created
                 self.content = data["content"]
 
+                self.refs = set()
+                #gets filled by self.update_refs()
+                #empty indicates that none of our actual references have referse references yet
+                #self.refs can be seen as a record of which of self._get_refs() have referse references
+
             def to_json(self):
                 return {"type" : self.typename,
                         "id" : self.ident,
@@ -281,18 +285,47 @@ class ObjectContext():
                 assert self.content.keys() == self.get_type().content.keys()
                 return set(self.content.keys())
 
-            def get_refs(self):
+            def _get_refs(self):
                 #yield a sequence of [unique : bool, target : int] of objects we point at
+                refs = set([])
                 t = self.get_type()
                 for key in self.content_keys:
-                    yield from t.content[key].get_refs(obj_ctx, self.content[key])
+                    for r in t.content[key].get_refs(obj_ctx, self.content[key]):
+                        refs.add(r)
+                return refs
 
             def add_reverse_ref(self, ident):
                 raise NotImplementedError()
+            def remove_reverse_ref(self, ident):
+                raise NotImplementedError()
+
+            def update_refs(self):
+                #update self.refs and all reverse references of objects we point to
+                now_refs = self._get_refs()
+
+                #add new reverse references
+                add_refs = set(now_refs)
+                for r in self.refs:
+                    if r in add_refs:
+                        add_refs.remove(r)
+
+                for r in add_refs:
+                    obj_ctx.objects[r].add_reverse_ref(self.ident)
+
+                #remove old reverse references 
+                rem_refs = set(self.refs)
+                for r in now_refs:
+                    if r in rem_refs:
+                        rem_refs.remove(r)
+
+                for r in rem_refs:
+                    obj_ctx.objects[r].remove_reverse_ref(self.ident)
+
+                self.refs = now_refs
 
             def validate(self):
                 #move validate_object code into here
-                self.get_type().validate_object(obj_ctx, self.content)
+                self.get_type().validate_object(obj_ctx, self.ident, self.content)
                     
                     
         self.Object = Object
@@ -307,7 +340,9 @@ class ObjectContext():
 
             def add_reverse_ref(self, ident):
                 parse_assert(False, "The root object cannot be referenced")
-
+            def remove_reverse_ref(self, ident):
+                assert False
+                
             def validate(self):
                 super().validate()
 
@@ -324,11 +359,15 @@ class ObjectContext():
             def add_reverse_ref(self, ident):
                 parse_assert(self.owner is None, f"unique objects should have exactly one reference, but unique object {ident} has {count} references")
                 self.owner = ident
+            def remove_reverse_ref(self, ident):
+                assert self.owner == ident
+                self.owner = None
                 
             def validate(self):
                 super().validate()
                 assert not self.owner is None
-                assert self.ident in obj_ctx.objects[self.owner].get_refs()
+                assert self.refs == self._get_refs()
+                assert self.ident in obj_ctx.objects[self.owner].refs
 
 
         class SharedObject(Object):
@@ -342,11 +381,15 @@ class ObjectContext():
 
             def add_reverse_ref(self, ident):
                 self.owners.add(ident)
+            def remove_reverse_ref(self, ident):
+                assert ident in self.owners
+                self.owners.remove(ident)
 
             def validate(self):
                 super().validate()
+                assert self.refs == self._get_refs()
                 for owner in self.owners:
-                    assert self.ident in obj_ctx.objects[owner].get_refs()
+                    assert self.ident in obj_ctx.objects[owner].refs
             
 
                     
@@ -386,9 +429,7 @@ class ObjectContext():
 
         #add reverse pointers
         for ident in new_idents:
-            obj = self.objects[ident]
-            for target_ident in obj.get_refs():
-                self.objects[target_ident].add_reverse_ref(ident)
+            self.objects[ident].update_refs()
 
     def __str__(self):
         return json.dumps(self.to_json(), indent = 2)
@@ -404,34 +445,13 @@ class ObjectContext():
             assert obj.ident == ident
             obj.validate()
 
-#################### already done in reverse references ####################
-##        #validate reference counts
-##        # - should be a unique root with no references
-##        # - exactly one refernece from a unique ptr to unique objects
-##        # - arbitrarily many referneces from shared ptrs to shared objects
-##        ref_count = {ident : 0 for ident in self.objects}
-##        for ident, obj in self.objects.items():
-##            for ref in obj.get_refs():
-##                ref_count[ref] += 1
-##
-##        for ident, count in ref_count.items():
-##            ref = self.objects[ident].ref
-##            if ref == REF_ROOT:
-##                assert count == 0 #should be impossible to be non-zero as unique pointers only point at unique objects and same for shared points and shared objects
-##            elif ref == REF_UNIQUE:
-##                parse_assert(count == 1, f"unique objects should have exactly one reference, but unique object {ident} has {count} references")
-##            elif ref == REF_SHARED:
-##                pass
-##            else:
-##                assert False
-
         #validate reference reachability (everything should be reachable from the root element)
         reachable_idents = set([self.root])
         boundary = set([self.root])
         while len(boundary) != 0:
             new_boundary = set()
             for b_ident in boundary:
-                for a_ident in self.objects[b_ident].get_refs():
+                for a_ident in self.objects[b_ident].refs:
                     if not a_ident in reachable_idents:
                         reachable_idents.add(a_ident)
                         new_boundary.add(a_ident)
@@ -462,7 +482,9 @@ class ObjectContext():
                     ident = atomic_change["id"]
                     parse_assert(type(ident) == int, "object id should be an int")
                     parse_assert(ident in self.objects, "object with id {ident} does not exist")
+                    obj = self.objects[ident]
                     del self.objects[ident]
+                    obj.remove_reverse_refs()
                 elif opp == "modify":
                     for key in atomic_change:
                         parse_assert(key in {"opp", "id", "field", "action"}, f"invalid {opp} opp field \"{key}\"")
@@ -473,7 +495,8 @@ class ObjectContext():
                     key = atomic_change["field"]
                     parse_assert(key in obj.get_type().content.keys(), "object of type \"{obj.typename}\" has no field \"{key}\"")
                     #TODO: move change content into object class
-                    obj.content[key] = obj.get_type().content[key].change_content(self, obj.content[key], atomic_change["action"])
+                    obj.content[key] = obj.get_type().content[key].change_content(self, ident, obj.content[key], atomic_change["action"])
+                    obj.update_refs()
                 else:
                     parse_assert(False, f"invalid \"opp\" field")
 
@@ -494,11 +517,11 @@ with open("objects.json", "r") as f:
 
     print(obj_ctx)
 
-##with open("changes.json", "r") as f:
-##    changes = json.loads(f.read())
-##    obj_ctx.apply_changes(changes)
-##
-##    print(obj_ctx)
+with open("changes.json", "r") as f:
+    changes = json.loads(f.read())
+    obj_ctx.apply_changes(changes)
+
+    print(obj_ctx)
 
     
     
