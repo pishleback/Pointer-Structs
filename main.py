@@ -503,25 +503,22 @@ class ObjectContext():
             self.validate()
 
     
+if __name__ == "__main__":
+    with open("structure.json", "r") as f:
+        structure = json.loads(f.read())
+        type_ctx = TypeContext(structure)
 
+    with open("objects.json", "r") as f:
+        objects = json.loads(f.read())
+        obj_ctx = ObjectContext(type_ctx, objects)
 
+        print(obj_ctx)
 
+    with open("changes.json", "r") as f:
+        changes = json.loads(f.read())
+        obj_ctx.apply_changes(changes)
 
-with open("structure.json", "r") as f:
-    structure = json.loads(f.read())
-    type_ctx = TypeContext(structure)
-
-with open("objects.json", "r") as f:
-    objects = json.loads(f.read())
-    obj_ctx = ObjectContext(type_ctx, objects)
-
-    print(obj_ctx)
-
-with open("changes.json", "r") as f:
-    changes = json.loads(f.read())
-    obj_ctx.apply_changes(changes)
-
-    print(obj_ctx)
+        print(obj_ctx)
 
     
     
