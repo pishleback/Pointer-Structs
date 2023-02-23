@@ -333,10 +333,10 @@ class ObjectContext():
                 self.refs = now_refs
 
             def get_unique_owner(self):
-                raise NotImplementedError()
+                raise NotImplementedError(f"get_unique_owner not implemented for {type(self)}")
 
             def get_shared_owners(self):
-                raise NotImplementedError()
+                raise NotImplementedError(f"get_shared_owners not implemented for {type(self)}")
 
             def validate(self):
                 #move validate_object code into here
@@ -403,7 +403,7 @@ class ObjectContext():
                 assert ident in self.owners
                 self.owners.remove(ident)
 
-            def get_shared_owner(self):
+            def get_shared_owners(self):
                 return self.owners
 
             def validate(self):
