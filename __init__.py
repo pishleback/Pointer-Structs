@@ -494,11 +494,14 @@ class ObjectContext():
     def get_type(self, ident):
         return self._objects[ident].typename
 
+    def get_types(self, ident):
+        return set(self._objects[ident].get_type().super_names)
+
     def get_unique_owner(self, ident):
         return self._objects[ident].get_unique_owner()
 
     def get_shared_owners(self, ident):
-        return self._objects[ident].get_shared_owners()
+        return set(self._objects[ident].get_shared_owners())
 
 
     def apply_changes(self, changes):
