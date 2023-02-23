@@ -254,8 +254,8 @@ class TypeContext():
 class ObjectContext():
     def __init__(self, type_ctx, objects):
         assert type(objects) == list
+        assert type(type_ctx) == TypeContext
         
-
         obj_ctx = self
         class Object():
             @classmethod
@@ -475,6 +475,10 @@ class ObjectContext():
     def get_content(self, ident):
         return self._objects[ident].content
 
+    def __getitem__(self, pair):
+        ident, key = pair
+        return self.get_content(ident)[key]
+
     def apply_changes(self, changes):
         parse_assert(type(changes) == list, "changes should be a list of change blocks")
         for change_block in changes:
@@ -532,6 +536,8 @@ if __name__ == "__main__":
         obj_ctx.apply_changes(changes)
         print("After changes:")
         print(obj_ctx)
+
+        print(obj_ctx[9, "foos"])
         
     
 
