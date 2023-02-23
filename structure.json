@@ -7,7 +7,7 @@
 	"type" : "string",
 	"super" : ["info"],
 	"content" : {
-        "string" : {"kind" : "basic", "type" : "str"}
+        "string" : {"kind" : "basic", "optional" : false, "type" : "str"}
     }
 },
 
@@ -15,8 +15,8 @@
 	"type" : "subinfo",
 	"super" : ["info"],
 	"content" : {
-        "title" : {"kind" : "basic", "type" : "str"},
-		"infos" : {"kind" : "list", "type" : {"kind" : "ptr", "unique" : true, "type" : "info"}}
+        "title" : {"kind" : "basic", "optional" : false, "type" : "str"},
+		"infos" : {"kind" : "list", "optional" : false, "type" : {"kind" : "ptr", "unique" : true, "type" : "info"}}
     }
 },
 
@@ -24,10 +24,10 @@
 	"type" : "date",
 	"super" : ["info"],
 	"content" : {
-        "day" : {"kind" : "basic", "type" : "str"},
-		"month" : {"kind" : "basic", "type" : "str"},
-		"year" : {"kind" : "basic", "type" : "str"},
-		"tags" : {"kind" : "list", "type" : {"kind" : "basic", "type" : "str"}}
+        "day" : {"kind" : "basic", "optional" : true, "type" : "str"},
+		"month" : {"kind" : "basic", "optional" : true, "type" : "str"},
+		"year" : {"kind" : "basic", "optional" : true, "type" : "str"},
+		"tags" : {"kind" : "list", "optional" : false, "type" : {"kind" : "basic", "type" : "str"}}
     }
 },
 
@@ -37,8 +37,7 @@
 {
     "type" : "entity",
 	"content" : {
-		"infos" : {"kind" : "list", "type" : {"kind" : "ptr", "unique" : true, "type" : "info"}},
-        "images" : {"kind" : "list", "type" : {"kind" : "ptr", "unique" : true, "type" : "subimage"}}
+		"infos" : {"kind" : "list", "optional" : false, "type" : {"kind" : "ptr", "unique" : true, "type" : "info"}}
     }
 },
 
@@ -50,15 +49,15 @@
 {
     "type" : "parent_ptr",
 	"content" : {
-        "target" : {"kind" : "ptr", "unique" : false, "type" : "person"}
+        "target" : {"kind" : "ptr", "optional" : false, "unique" : false, "type" : "person"}
     }
 },
 
 {
     "type" : "child_ptr", 
     "content" : {
-        "target" : {"kind" : "ptr", "unique" : false, "type" : "person"},
-		"adopted" : {"kind" : "basic", "type" : "bool"}
+        "target" : {"kind" : "ptr", "optional" : false, "unique" : false, "type" : "person"},
+		"adopted" : {"kind" : "basic", "optional" : false, "type" : "bool"}
     }
 },
 
@@ -66,8 +65,8 @@
     "type" : "partnership", 
     "super" : ["entity"],
     "content" : {
-        "parents" : {"kind" : "list", "type" : {"kind" : "ptr", "unique" : true, "type" : "parent_ptr"}},
-        "children" : {"kind" : "list", "type" : {"kind" : "ptr", "unique" : true, "type" : "child_ptr"}}
+        "parents" : {"kind" : "list", "optional" : false, "type" : {"kind" : "ptr", "unique" : true, "type" : "parent_ptr"}},
+        "children" : {"kind" : "list", "optional" : false, "type" : {"kind" : "ptr", "unique" : true, "type" : "child_ptr"}}
     }
 },
 
@@ -75,18 +74,20 @@
     "type" : "image",
     "super" : ["entity"],
 	"content" : {
-		"path" : {"kind" : "basic", "type" : "str"}
+		"path" : {"kind" : "basic", "optional" : false, "type" : "str"},
+		"subimages" : {"kind" : "list", "optional" : false, "type" : {"kind" : "ptr", "unique" : true, "type" : "subimage"}}
     }
 },
 
 {
     "type" : "subimage",
 	"content" : {
-		"image" : {"kind" : "ptr", "unique" : false, "type" : "image"},
-        "x" : {"kind" : "basic", "type" : "float"},
-		"y" : {"kind" : "basic", "type" : "float"},
-		"w" : {"kind" : "basic", "type" : "float"},
-		"h" : {"kind" : "basic", "type" : "float"}
+		"entity" : {"kind" : "ptr", "optional" : false, "unique" : false, "type" : "entity"},
+        "x" : {"kind" : "basic", "optional" : false, "type" : "float"},
+		"y" : {"kind" : "basic", "optional" : false, "type" : "float"},
+		"w" : {"kind" : "basic", "optional" : false, "type" : "float"},
+		"h" : {"kind" : "basic", "optional" : false, "type" : "float"},
+		"usable" : {"kind" : "basic", "optional" : false, "type" : "bool"}
     }
 },
 
@@ -94,22 +95,23 @@
 {
 	"type" : "tree",
 	"content" : {
-		"entities" : {"kind" : "list", "type" : {"kind" : "ptr", "unique" : false, "type" : "entity"}}
+		"entities" : {"kind" : "list", "optional" : false, "type" : {"kind" : "ptr", "unique" : false, "type" : "entity"}}
     }
 },
 
 {
 	"type" : "foo",
-	"content" : {
-		"bars" : {"kind" : "list", "type" : {"kind" : "ptr", "unique" : false, "type" : "bar"}}
-    }
+	"content" : 
+	{
+		"bars" : {"kind" : "list", "optional" : false, "type" : {"kind" : "ptr", "unique" : false, "type" : "bar"}}
+	}
 },
 
 {
 	"type" : "bar",
-	"content" : {
-		"foos" : {"kind" : "list", "type" : {"kind" : "ptr", "unique" : false, "type" : "foo"}}
-    }
+	"content" : 
+	{
+		"foos" : {"kind" : "list", "optional" : false, "type" : {"kind" : "ptr", "unique" : false, "type" : "foo"}}
+	}
 }
-
 ]

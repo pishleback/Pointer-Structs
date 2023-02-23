@@ -65,7 +65,7 @@ class TypeContext():
                 parse_assert(self.ptr_type in target_object.get_type().super_names, f"pointer to object of type \"{self.ptr_type}\" contains id of object of non super type \"{obj_ctx.objects[content].typename}\"")
                 if self.unique:
                     parse_assert(target_object.reftypestr() == REF_UNIQUE, "unique pointer must point to a unique with ref=unique")
-                    assert content == target_object.owner
+                    assert ident == target_object.owner
                 else:
                     parse_assert(target_object.reftypestr() == REF_SHARED, "shared pointer must point to an object with ref=shared")
                     assert ident in target_object.owners
@@ -97,7 +97,7 @@ class TypeContext():
                 pass
 
             def validate_object(self, obj_ctx, ident, content):
-                parse_assert(type(content) == (BUILTIN_TYPES[self.builtin_type]), "basic type content has the wrong type")
+                parse_assert(type(content) == BUILTIN_TYPES[self.builtin_type], f"basic type {self.builtin_type} content has the wrong type {type(content)}")
                 
             def get_refs(self, obj_ctx, content):
                 return; yield
@@ -175,7 +175,9 @@ class TypeContext():
                 for key in structure:
                     assert key in {"type", "super", "content"}
                 self.name = structure["type"]
+                self.keys = set([])
                 self.content = {} #name -> TypePtr
+                self.optional = {} #name -> bool
                 structure["super"] = structure.get("super", [])
                 parse_assert(type(structure["super"]) == list, "super types should be provided as a list")
                 self._imm_super_types = [] #used to compute all the types we inherit from
@@ -184,14 +186,23 @@ class TypeContext():
                     parse_assert(super_type_name in super_types, f"type of name \"{super_type_name}\" not found in definition of type \"{self.name}\"")
                     super_type = super_types[super_type_name]
                     self._imm_super_types.append(super_type)
-                    for n, t in super_type.content.items():
+                    for n in super_type.keys:
+                        
                         parse_assert(not n in self.content, f"duplicate content key {n} not allowed in definition of type\"{self.name}\"")
-                        self.content[n] = t
+                        self.content[n] = super_type.content[n]
+                        self.optional[n] = super_type.optional[n]
+                        self.keys.add(n)
                 structure["content"] = structure.get("content", {})
                 assert type(structure["content"]) == dict
                 for n, t_struct in structure["content"].items():
                     parse_assert(not n in self.content, f"duplicate content key {n} not allowed in definition of type\"{self.name}\"")
+                    assert "optional" in t_struct
+                    self.optional[n] = t_struct["optional"]
+                    del t_struct["optional"]
                     self.content[n] = make_type_ptr(t_struct)
+                    self.keys.add(n)
+
+                assert self.keys == self.content.keys() == self.optional.keys()
 
             #return all types which we inherit from
             @property
@@ -211,8 +222,12 @@ class TypeContext():
                     t.validate_kinds(ptr_type_names)
 
             def validate_object(self, obj_ctx, ident, content):
-                parse_assert((keys := content.keys()) == self.content.keys(), f"objects content keys {set(content.keys())} dont match those expected of its type {set(self.content.keys())}")
-                for key in keys:
+                for key in content.keys():
+                    parse_assert(key in self.keys, f"content has an unknown key {key}")
+                for key, opt in self.optional.items():
+                    if not opt:
+                        parse_assert(key in content, f"content is missing non-optional key {key}")
+                for key in content.keys():
                     self.content[key].validate_object(obj_ctx, ident, content[key])
                 
 
@@ -253,7 +268,7 @@ class ObjectContext():
                 for key in data.keys():
                     parse_assert(key in {"type", "id", "ref", "content"}, f"invalid object key \"{key}\"")
                 #validate type
-                parse_assert(data["type"] in type_ctx.types, "unknown type \"{data['type']}\"")
+                parse_assert(data["type"] in type_ctx.types, f"unknown type \"{data['type']}\"")
                 self.typename = data["type"]
                 
                 #validate id
@@ -280,16 +295,11 @@ class ObjectContext():
             def get_type(self):
                 return type_ctx.types[self.typename]
 
-            @property
-            def content_keys(self):
-                assert self.content.keys() == self.get_type().content.keys()
-                return set(self.content.keys())
-
             def _get_refs(self):
                 #yield a sequence of [unique : bool, target : int] of objects we point at
                 refs = set([])
                 t = self.get_type()
-                for key in self.content_keys:
+                for key in self.content.keys():
                     for r in t.content[key].get_refs(obj_ctx, self.content[key]):
                         refs.add(r)
                 return refs
@@ -357,7 +367,7 @@ class ObjectContext():
                 self.owner = None
 
             def add_reverse_ref(self, ident):
-                parse_assert(self.owner is None, f"unique objects should have exactly one reference, but unique object {ident} has {count} references")
+                parse_assert(self.owner is None, f"unique objects should have exactly one reference, but unique object {ident} has more than one")
                 self.owner = ident
             def remove_reverse_ref(self, ident):
                 assert self.owner == ident
@@ -502,7 +512,8 @@ class ObjectContext():
 
             self.validate()
 
-    
+
+
 if __name__ == "__main__":
     with open("structure.json", "r") as f:
         structure = json.loads(f.read())
@@ -511,16 +522,12 @@ if __name__ == "__main__":
     with open("objects.json", "r") as f:
         objects = json.loads(f.read())
         obj_ctx = ObjectContext(type_ctx, objects)
-
         print(obj_ctx)
 
     with open("changes.json", "r") as f:
         changes = json.loads(f.read())
         obj_ctx.apply_changes(changes)
-
         print(obj_ctx)
-
-    
     
 
 
