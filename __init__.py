@@ -332,6 +332,12 @@ class ObjectContext():
 
                 self.refs = now_refs
 
+            def get_unique_owner(self):
+                raise NotImplementedError()
+
+            def get_shared_owners(self):
+                raise NotImplementedError()
+
             def validate(self):
                 #move validate_object code into here
                 self.get_type().validate_object(obj_ctx, self.ident, self.content)
@@ -371,6 +377,9 @@ class ObjectContext():
             def remove_reverse_ref(self, ident):
                 assert self.owner == ident
                 self.owner = None
+
+            def get_unique_owner(self):
+                return self.owner
                 
             def validate(self):
                 super().validate()
@@ -393,6 +402,9 @@ class ObjectContext():
             def remove_reverse_ref(self, ident):
                 assert ident in self.owners
                 self.owners.remove(ident)
+
+            def get_shared_owner(self):
+                return self.owners
 
             def validate(self):
                 super().validate()
@@ -478,6 +490,16 @@ class ObjectContext():
     def __getitem__(self, pair):
         ident, key = pair
         return self.get_content(ident)[key]
+
+    def get_type(self, ident):
+        return self._objects[ident].typename
+
+    def get_unique_owner(self, ident):
+        return self._objects[ident].get_unique_owner()
+
+    def get_shared_owners(self, ident):
+        return self._objects[ident].get_shared_owners()
+
 
     def apply_changes(self, changes):
         parse_assert(type(changes) == list, "changes should be a list of change blocks")
