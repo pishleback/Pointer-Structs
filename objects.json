@@ -1,5 +1,5 @@
-[
-{"type" : "foo", "ref" : "root", "id" : 0, "content" : {"bars" : [3, 4]}},
-{"type" : "bar", "ref" : "shared", "id" : 3, "content" : {"foos" : []}},
-{"type" : "bar", "ref" : "shared", "id" : 4, "content" : {"foos" : []}}
-]
+{
+"0" : {"type" : "foo", "ref" : "root", "content" : {"bars" : ["3", "4"]}},
+"3" : {"type" : "bar", "ref" : "shared", "content" : {"foos" : []}},
+"4" : {"type" : "bar", "ref" : "shared", "content" : {"foos" : []}}
+}

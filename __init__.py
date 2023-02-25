@@ -58,7 +58,7 @@ class TypeContext():
                 assert self.ptr_type in ptr_type_names
 
             def validate_object(self, obj_ctx, ident, content):
-                parse_assert(type(content) == int, "a pointer to an object should be an int containing the id of the object")
+                parse_assert(type(content) == str, "a pointer to an object should be an str containing the ident of the object")
                 parse_assert(content in obj_ctx._objects, f"pointer to object with id \"{content}\" not found")
                 target_object = obj_ctx._objects[content]
                 parse_assert(self.ptr_type in target_object.get_type().super_names, f"pointer to object of type \"{self.ptr_type}\" contains id of object of non super type \"{obj_ctx._objects[content].typename}\"")
@@ -70,7 +70,7 @@ class TypeContext():
                     assert ident in target_object.owners
 
             def get_refs(self, obj_ctx, content):
-                assert type(content) == int
+                assert type(content) == str #idents are strs
                 yield content
 
             def change_content(self, obj_ctx, ident, content, action):
@@ -253,7 +253,6 @@ class TypeContext():
 
 class ObjectContext():
     def __init__(self, type_ctx, objects):
-        assert type(objects) == list
         assert type(type_ctx) == TypeContext
         
         obj_ctx = self
@@ -262,7 +261,7 @@ class ObjectContext():
             def reftypestr(cls):
                 assert False
             
-            def __init__(self, data):
+            def __init__(self, ident, data):
                 parse_assert(type(data) == dict, "objects shold be dicts")
                 for key in data.keys():
                     parse_assert(key in {"type", "id", "ref", "content"}, f"invalid object key \"{key}\"")
@@ -271,8 +270,8 @@ class ObjectContext():
                 self.typename = data["type"]
                 
                 #validate id
-                parse_assert(type(data["id"]) == int, "object id should be an int")
-                self.ident = data["id"]
+                assert type(ident) == str
+                self.ident = ident
 
 ##                self.ref = data["ref"]
 ##                assert type(self) == Object[self.ref]
@@ -350,8 +349,8 @@ class ObjectContext():
             def reftypestr(cls):
                 return "root"
                 
-            def __init__(self, data):
-                super().__init__(data)
+            def __init__(self, ident, data):
+                super().__init__(ident, data)
 
             def add_reverse_ref(self, ident):
                 parse_assert(False, "The root object cannot be referenced")
@@ -367,8 +366,8 @@ class ObjectContext():
             def reftypestr(cls):
                 return "unique"
                 
-            def __init__(self, data):
-                super().__init__(data)
+            def __init__(self, ident, data):
+                super().__init__(ident, data)
                 self.owner = None
 
             def add_reverse_ref(self, ident):
@@ -393,8 +392,8 @@ class ObjectContext():
             def reftypestr(cls):
                 return "shared"
                 
-            def __init__(self, data):
-                super().__init__(data)
+            def __init__(self, ident, data):
+                super().__init__(ident, data)
                 self.owners = set([])
 
             def add_reverse_ref(self, ident):
@@ -414,12 +413,12 @@ class ObjectContext():
             
 
                     
-        def make_object(data):
+        def make_object(ident, data):
             parse_assert("ref" in data, "object json should contain a ref field")
             ref = data["ref"]
             for obj_t in [RootObject, UniqueObject, SharedObject]:
                 if ref == obj_t.reftypestr():
-                    return obj_t(data)
+                    return obj_t(ident, data)
             parse_assert(False, "invalide ref value. Should be one of: \"root\", \"unique\", \"shared\".")
                     
         self._make_object = make_object
@@ -428,20 +427,20 @@ class ObjectContext():
         self._objects = {} #ident -> objects
         self.add_objects(objects)
         parse_assert(not self._root is None, "no root object present")
-        assert type(self._root) == int
+        assert type(self._root) == str
         assert self._root in self._objects
 
         self.validate()
 
     def add_objects(self, objects):
-        #must be done with lists of objects so that circular references can occur within the provided objects
+        parse_assert(type(objects) == dict, "structure should be a dict of ident -> objects")
+        #must be done with collections of objects so that circular references can occur within the provided objects
         
         #add objects
         new_idents = []
-        for data in objects:
-            obj = self._make_object(data)
-            parse_assert(not obj.ident in self._objects, f"multiple objects with id {obj.ident} found")
-            ident = obj.ident
+        for ident, obj_data in objects.items():
+            obj = self._make_object(ident, obj_data)
+            parse_assert(not ident in self._objects, f"multiple objects with id {obj.ident} found")
             self._objects[ident] = obj
             if type(obj).reftypestr() == "root":
                 parse_assert(self._root is None, "more than one root object present")
@@ -456,12 +455,12 @@ class ObjectContext():
         return json.dumps(self.to_json(), indent = 2)
 
     def to_json(self):
-        return [obj.to_json() for obj in self._objects.values()]
+        return {ident : obj.to_json() for ident, obj in self._objects.items()}
 
     def validate(self):
         #validate contents
         for ident, obj in self._objects.items():
-            assert type(ident) == int
+            assert type(ident) == str
             assert isinstance(obj, self.Object)
             assert obj.ident == ident
             obj.validate()
@@ -513,12 +512,12 @@ class ObjectContext():
                 opp = atomic_change["opp"]
                 if opp == "add":
                     for key in atomic_change:
-                        parse_assert(key in {"opp", "object"}, f"invalid {opp} opp field \"{key}\"")
-                    self.add_objects([atomic_change["object"]])
+                        parse_assert(key in {"opp", "ident", "object"}, f"invalid {opp} opp field \"{key}\"")
+                    self.add_objects({atomic_change["ident"] : atomic_change["object"]})
                 elif opp == "remove":
                     for key in atomic_change:
-                        parse_assert(key in {"opp", "id"}, f"invalid {opp} opp field \"{key}\"")
-                    ident = atomic_change["id"]
+                        parse_assert(key in {"opp", "ident"}, f"invalid {opp} opp field \"{key}\"")
+                    ident = atomic_change["ident"]
                     parse_assert(type(ident) == int, "object id should be an int")
                     parse_assert(ident in self._objects, "object with id {ident} does not exist")
                     obj = self._objects[ident]
@@ -526,9 +525,9 @@ class ObjectContext():
                     obj.remove_reverse_refs()
                 elif opp == "modify":
                     for key in atomic_change:
-                        parse_assert(key in {"opp", "id", "field", "action"}, f"invalid {opp} opp field \"{key}\"")
-                    ident = atomic_change["id"]
-                    parse_assert(type(ident) == int, "object id should be an int")
+                        parse_assert(key in {"opp", "ident", "field", "action"}, f"invalid {opp} opp field \"{key}\"")
+                    ident = atomic_change["ident"]
+                    parse_assert(type(ident) == str, "object ident should be a str")
                     parse_assert(ident in self._objects, "object with id {ident} does not exist")
                     obj = self._objects[ident]
                     key = atomic_change["field"]
@@ -560,10 +559,7 @@ if __name__ == "__main__":
         changes = json.loads(f.read())
         obj_ctx.apply_changes(changes)
         print("After changes:")
-        print(obj_ctx)
-
-        print(obj_ctx[9, "foos"])
-        
+        print(obj_ctx)        
     
 
 
