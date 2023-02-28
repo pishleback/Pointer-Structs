@@ -1,2 +1,0 @@
-i used this to convert old family tree xml format to the new pointer-struct json format
-not sure where else to put it, so its here
