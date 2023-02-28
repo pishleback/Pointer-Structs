@@ -504,41 +504,39 @@ class ObjectContext():
 
 
     def apply_changes(self, changes):
-        parse_assert(type(changes) == list, "changes should be a list of change blocks")
-        for change_block in changes:
-            parse_assert(type(change_block) == list, "change block should be a list of atomic change objects")
-            for atomic_change in change_block:
-                parse_assert("opp" in atomic_change, "a change object should have an \"opp\" field")
-                opp = atomic_change["opp"]
-                if opp == "add":
-                    for key in atomic_change:
-                        parse_assert(key in {"opp", "ident", "object"}, f"invalid {opp} opp field \"{key}\"")
-                    self.add_objects({atomic_change["ident"] : atomic_change["object"]})
-                elif opp == "remove":
-                    for key in atomic_change:
-                        parse_assert(key in {"opp", "ident"}, f"invalid {opp} opp field \"{key}\"")
-                    ident = atomic_change["ident"]
-                    parse_assert(type(ident) == int, "object id should be an int")
-                    parse_assert(ident in self._objects, "object with id {ident} does not exist")
-                    obj = self._objects[ident]
-                    del self._objects[ident]
-                    obj.remove_reverse_refs()
-                elif opp == "modify":
-                    for key in atomic_change:
-                        parse_assert(key in {"opp", "ident", "field", "action"}, f"invalid {opp} opp field \"{key}\"")
-                    ident = atomic_change["ident"]
-                    parse_assert(type(ident) == str, "object ident should be a str")
-                    parse_assert(ident in self._objects, "object with id {ident} does not exist")
-                    obj = self._objects[ident]
-                    key = atomic_change["field"]
-                    parse_assert(key in obj.get_type().content.keys(), "object of type \"{obj.typename}\" has no field \"{key}\"")
-                    #TODO: move change content into object class
-                    obj.content[key] = obj.get_type().content[key].change_content(self, ident, obj.content[key], atomic_change["action"])
-                    obj.update_refs()
-                else:
-                    parse_assert(False, f"invalid \"opp\" field")
+        parse_assert(type(changes) == list, "change block should be a list of atomic change objects")
+        for atomic_change in changes:
+            parse_assert("opp" in atomic_change, "a change object should have an \"opp\" field")
+            opp = atomic_change["opp"]
+            if opp == "add":
+                for key in atomic_change:
+                    parse_assert(key in {"opp", "ident", "object"}, f"invalid {opp} opp field \"{key}\"")
+                self.add_objects({atomic_change["ident"] : atomic_change["object"]})
+            elif opp == "remove":
+                for key in atomic_change:
+                    parse_assert(key in {"opp", "ident"}, f"invalid {opp} opp field \"{key}\"")
+                ident = atomic_change["ident"]
+                parse_assert(type(ident) == int, "object id should be an int")
+                parse_assert(ident in self._objects, "object with id {ident} does not exist")
+                obj = self._objects[ident]
+                del self._objects[ident]
+                obj.remove_reverse_refs()
+            elif opp == "modify":
+                for key in atomic_change:
+                    parse_assert(key in {"opp", "ident", "field", "action"}, f"invalid {opp} opp field \"{key}\"")
+                ident = atomic_change["ident"]
+                parse_assert(type(ident) == str, "object ident should be a str")
+                parse_assert(ident in self._objects, "object with id {ident} does not exist")
+                obj = self._objects[ident]
+                key = atomic_change["field"]
+                parse_assert(key in obj.get_type().content.keys(), "object of type \"{obj.typename}\" has no field \"{key}\"")
+                #TODO: move change content into object class
+                obj.content[key] = obj.get_type().content[key].change_content(self, ident, obj.content[key], atomic_change["action"])
+                obj.update_refs()
+            else:
+                parse_assert(False, f"invalid \"opp\" field")
 
-            self.validate()
+        self.validate()
 
 
 
@@ -557,7 +555,8 @@ if __name__ == "__main__":
 
     with open("changes.json", "r") as f:
         changes = json.loads(f.read())
-        obj_ctx.apply_changes(changes)
+        for change_block in changes:
+            obj_ctx.apply_changes(change_block)
         print("After changes:")
         print(obj_ctx)        
     
