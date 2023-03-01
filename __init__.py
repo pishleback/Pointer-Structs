@@ -529,7 +529,7 @@ class ObjectContext():
                 parse_assert(ident in self._objects, "object with id {ident} does not exist")
                 obj = self._objects[ident]
                 key = atomic_change["field"]
-                parse_assert(key in obj.get_type().content.keys(), "object of type \"{obj.typename}\" has no field \"{key}\"")
+                parse_assert(key in obj.get_type().content.keys(), f"object of type \"{obj.typename}\" has no field \"{key}\"")
                 #TODO: move change content into object class
                 obj.content[key] = obj.get_type().content[key].change_content(self, ident, obj.content[key], atomic_change["action"])
                 obj.update_refs()
