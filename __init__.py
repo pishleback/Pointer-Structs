@@ -503,7 +503,8 @@ class ObjectContext():
         return set(self._objects[ident].get_shared_owners())
 
 
-    def apply_changes(self, changes):
+    def apply_changes(self, changes, do_validate = True):
+        assert type(do_validate) == bool
         parse_assert(type(changes) == list, "change block should be a list of atomic change objects")
         for atomic_change in changes:
             parse_assert("opp" in atomic_change, "a change object should have an \"opp\" field")
@@ -536,7 +537,8 @@ class ObjectContext():
             else:
                 parse_assert(False, f"invalid \"opp\" field")
 
-        self.validate()
+        if do_validate:
+            self.validate()
 
 
 
