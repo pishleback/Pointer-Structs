@@ -517,7 +517,7 @@ class ObjectContext():
                 for key in atomic_change:
                     parse_assert(key in {"opp", "ident"}, f"invalid {opp} opp field \"{key}\"")
                 ident = atomic_change["ident"]
-                parse_assert(type(ident) == int, "object id should be an int")
+                parse_assert(type(ident) == str, "object id should be a str")
                 parse_assert(ident in self._objects, "object with id {ident} does not exist")
                 obj = self._objects[ident]
                 del self._objects[ident]
