@@ -521,7 +521,7 @@ class ObjectContext():
                 parse_assert(ident in self._objects, "object with id {ident} does not exist")
                 obj = self._objects[ident]
                 del self._objects[ident]
-                obj.remove_reverse_refs()
+                obj.remove_reverse_ref()
             elif opp == "modify":
                 for key in atomic_change:
                     parse_assert(key in {"opp", "ident", "field", "action"}, f"invalid {opp} opp field \"{key}\"")
