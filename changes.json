@@ -6,4 +6,10 @@
 {"opp" : "modify", "ident" : "0", "field" : "bars", "action" : {"opp" : "append", "value" : "2"}},
 {"opp" : "modify", "ident" : "0", "field" : "bars", "action" : {"opp" : "remove", "idx" : 4}},
 {"opp" : "modify", "ident" : "0", "field" : "bars", "action" : {"opp" : "modify", "idx" : 3, "action" : {"opp" : "replace", "value" : "2"}}}
+]
+,
+[
+{"opp" : "modify", "ident" : "0", "field" : "bars", "action" : {"opp" : "replace", "value" : ["3", "4"]}},
+{"opp" : "remove", "ident" : "1"},
+{"opp" : "remove", "ident" : "2"}
 ]]

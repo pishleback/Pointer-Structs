@@ -294,7 +294,6 @@ class ObjectContext():
                 return type_ctx._types[self.typename]
 
             def get_refs(self):
-                #yield a sequence of [unique : bool, target : int] of objects we point at
                 refs = set([])
                 t = self.get_type()
                 for key in self.content.keys():
@@ -520,8 +519,8 @@ class ObjectContext():
                 parse_assert(type(ident) == str, "object id should be a str")
                 parse_assert(ident in self._objects, "object with id {ident} does not exist")
                 obj = self._objects[ident]
-                for unique, target in self._objects[ident].get_refs():
-                    target.remove_reverse_ref(ident)
+                for target in self._objects[ident].get_refs():
+                    self._objects[target].remove_reverse_ref(ident)
                 del self._objects[ident]
             elif opp == "modify":
                 for key in atomic_change:
@@ -559,7 +558,7 @@ if __name__ == "__main__":
     with open("changes.json", "r") as f:
         changes = json.loads(f.read())
         for change_block in changes:
-            obj_ctx.apply_changes(change_block)
+            obj_ctx.apply_changes(change_block, False)
         print("After changes:")
         print(obj_ctx)        
     
