@@ -282,7 +282,7 @@ class ObjectContext():
                 self.refs = set()
                 #gets filled by self.update_refs()
                 #empty indicates that none of our actual references have referse references yet
-                #self.refs can be seen as a record of which of self._get_refs() have referse references
+                #self.refs can be seen as a record of which of self.get_refs() have referse references
 
             def to_json(self):
                 return {"type" : self.typename,
@@ -293,7 +293,7 @@ class ObjectContext():
             def get_type(self):
                 return type_ctx._types[self.typename]
 
-            def _get_refs(self):
+            def get_refs(self):
                 #yield a sequence of [unique : bool, target : int] of objects we point at
                 refs = set([])
                 t = self.get_type()
@@ -309,7 +309,7 @@ class ObjectContext():
 
             def update_refs(self):
                 #update self.refs and all reverse references of objects we point to
-                now_refs = self._get_refs()
+                now_refs = self.get_refs()
 
                 #add new reverse references
                 add_refs = set(now_refs)
@@ -383,7 +383,7 @@ class ObjectContext():
             def validate(self):
                 super().validate()
                 assert not self.owner is None
-                assert self.refs == self._get_refs()
+                assert self.refs == self.get_refs()
                 assert self.ident in obj_ctx._objects[self.owner].refs
 
 
@@ -407,7 +407,7 @@ class ObjectContext():
 
             def validate(self):
                 super().validate()
-                assert self.refs == self._get_refs()
+                assert self.refs == self.get_refs()
                 for owner in self.owners:
                     assert self.ident in obj_ctx._objects[owner].refs
             
@@ -520,8 +520,8 @@ class ObjectContext():
                 parse_assert(type(ident) == str, "object id should be a str")
                 parse_assert(ident in self._objects, "object with id {ident} does not exist")
                 obj = self._objects[ident]
-                for other_ident in self._objects:
-                    self._objects[other_ident].remove_reverse_ref(ident)
+                for unique, target in self._objects[ident].get_refs():
+                    target.remove_reverse_ref(ident)
                 del self._objects[ident]
             elif opp == "modify":
                 for key in atomic_change:
